@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Hello World</title>
+  <!-- required modeler styles -->
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@10.3.0/dist/assets/bpmn-js.css">
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@10.3.0/dist/assets/diagram-js.css">
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@10.3.0/dist/assets/bpmn-font/css/bpmn.css">
+  <!-- modeler distro -->
+  <script src="https://unpkg.com/bpmn-js@10.3.0/dist/bpmn-modeler.development.js"></script>
+  <!-- needed for this example only -->
+  <script src="https://unpkg.com/jquery@3.3.1/dist/jquery.js"></script>
+  <!-- example styles -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.js"></script>
+  <style>
+    html, body, #canvas {
+      height: 100%;
+      padding: 0;
+      margin: 0;
+    }
+    .diagram-note {
+      background-color: rgba(66, 180, 21, 0.7);
+      color: White;
+      border-radius: 5px;
+      font-family: Arial;
+      font-size: 12px;
+      padding: 5px;
+      min-height: 16px;
+      width: 50px;
+      text-align: center;
+    }
+    .needs-discussion:not(.djs-connection) .djs-visual > :nth-child(1) {
+      stroke: rgba(66, 180, 21, 0.7) !important; /* color elements as red */
+    }
+    #downloadXML {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+    }
+    #downloadSVG {
+      position: fixed;
+      bottom: 20px;
+      left: 150px;
+    }   
+    #downloadPNG {
+      position: fixed;
+      bottom: 20px;
+      left: 280px;
+    }        
+  </style>
+</head>
+<body>
+  <div id="canvas"></div>
+  <button id="downloadXML">Download XML</button>
+  <button id="downloadSVG">Download SVG</button>
+  <button id="downloadPNG">Download PNG</button>
+
+  <script>
+    var diagramUrl = 'https://cdn.staticaly.com/gh/bpmn-io/bpmn-js-examples/dfceecba/starter/diagram.bpmn';
+    // modeler instance
+    var bpmnModeler = new BpmnJS({
+      container: '#canvas',
+      keyboard: {
+        bindTo: window
+      }
+    });
+    /**
+    * Save diagram contents and print them to the console.
+    */
+    async function downloadXML() {
+      try {
+        var result = await bpmnModeler.saveXML({ format: true }, function (error, svg) {
+          if (error) {
+            return;
+          }
+          var svgBlob = new Blob([svg], {
+            type: 'image/svg+xml'
+          });
+          var fileName = Math.random(36).toString().substring(7) + '.xml';
+          var downloadLink = document.createElement('a');
+          downloadLink.download = fileName;
+          downloadLink.innerHTML = 'Get BPMN SVG';
+          downloadLink.href = window.URL.createObjectURL(svgBlob);
+          downloadLink.onclick = function (event) {
+            document.body.removeChild(event.target);
+          };
+          downloadLink.style.visibility = 'hidden';
+          document.body.appendChild(downloadLink);
+          downloadLink.click();                                        
+        });         
+        // alert('Diagram exported. Check the developer tools!');
+        console.log('DIAGRAM', result.xml);
+        console.log("RESULT", result);          
+      } catch (err) {
+        console.error('could not save BPMN 2.0 diagram', err);
+      }
+    }
+    /**
+    * Save diagram contents and download it as SVG.
+    */
+    async function downloadSVG() {
+      try {
+        // var result = await bpmnModeler.saveXML({ format: true });
+        bpmnModeler.saveSVG({ format: true }, function (error, svg) {
+          if (error) {
+            return;
+          }
+          var svgBlob = new Blob([svg], {
+            type: 'image/svg+xml'
+          });
+          var fileName = Math.random(36).toString().substring(7) + '.svg';
+          var downloadLink = document.createElement('a');
+          downloadLink.download = fileName;
+          downloadLink.innerHTML = 'Get BPMN SVG';
+          downloadLink.href = window.URL.createObjectURL(svgBlob);
+          downloadLink.onclick = function (event) {
+            document.body.removeChild(event.target);
+          };
+          downloadLink.style.visibility = 'hidden';
+          document.body.appendChild(downloadLink);
+          downloadLink.click();                                        
+        });           
+      } catch (err) {
+        console.error('could not save BPMN 2.0 diagram', err);
+      }
+    }   
+    /**
+    * Save diagram contents and download it as PNG.
+    */
+    async function downloadPNG() {
+      try {
+        var t = this;
+        // use the modeler saveSVG method
+        bpmnModeler.saveSVG(function (err, svg) {
+            if (err) {
+                return;
+            }
+            try {
+                // can use the domUrl function from the browser
+                var domUrl = window.URL || window.webkitURL || window;
+                if (!domUrl) {
+                    throw new Error("(browser doesnt support this)")
+                }
+                // figure out the height and width from svg text
+                var match = svg.match(/height=\"(\d+)/m);
+                var height = match && match[1] ? parseInt(match[1], 10) : 200;
+                var match = svg.match(/width=\"(\d+)/m);
+                var width = match && match[1] ? parseInt(match[1], 10) : 200;
+                var margin = t.margin || 0; // set margin
+                var fill = t.fill || '#ffffff'; // set fill color
+                // it needs a namespace
+                if (!svg.match(/xmlns=\"/mi)) {
+                    svg = svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+                }
+                // create a canvas element to pass through
+                var canvas = document.createElement("canvas");
+                canvas.width = width + margin * 2;
+                canvas.height = height + margin * 2;
+                var ctx = canvas.getContext("2d");
+                // make a blob from the svg
+                var svg = new Blob([svg], {
+                    type: "image/svg+xml;charset=utf-8"
+                });
+                // create a dom object for that image
+                var url = domUrl.createObjectURL(svg);
+                // create a new image to hold it the converted type
+                var img = new Image;
+                // when the image is loaded we can get it as base64 url
+                img.onload = function () {
+                    // draw it to the canvas
+                    ctx.drawImage(this, margin, margin);
+                    // if it needs some styling, we need a new canvas
+                    if (fill) {
+                        var styled = document.createElement("canvas");
+                        styled.width = canvas.width;
+                        styled.height = canvas.height;
+                        var styledCtx = styled.getContext("2d");
+                        styledCtx.save();
+                        styledCtx.fillStyle = fill;
+                        styledCtx.fillRect(0, 0, canvas.width, canvas.height);
+                        styledCtx.strokeRect(0, 0, canvas.width, canvas.height);
+                        styledCtx.restore();
+                        styledCtx.drawImage(canvas, 0, 0);
+                        canvas = styled;
+                    }
+                    // we don't need the original any more
+                    domUrl.revokeObjectURL(url);
+                    // now we can resolve the promise, passing the base64 url
+                    //resolve(canvas.toDataURL());
+                    var fileName = Math.random(36).toString().substring(7) + '.png';
+                    var downloadLink = document.createElement('a');
+                    downloadLink.download = fileName;
+                    downloadLink.innerHTML = 'Get BPMN PNG';
+                    downloadLink.href = canvas.toDataURL();
+                    downloadLink.onclick = function (event) {
+                        document.body.removeChild(event.target);
+                    };
+                    downloadLink.style.visibility = 'hidden';
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                };
+                // load the image
+                img.src = url;
+            } catch (err) {
+                reject('failed to convert svg to png ' + err);
+            }
+        });        
+      } catch (err) {
+        console.log('could not save BPMN 2.0 diagram', err);
+      }
+    }         
+    /**
+    * Open diagram in our modeler instance.
+    *
+    * @param {String} bpmnXML diagram to display
+    */
+    async function openDiagram(bpmnXML) {
+      // import diagram
+      try {
+        await bpmnModeler.importXML(bpmnXML);
+        // access modeler components
+        var canvas = bpmnModeler.get('canvas');
+        var overlays = bpmnModeler.get('overlays');
+        // zoom to fit full viewport
+        canvas.zoom('fit-viewport');
+        // attach an overlay to a node
+        overlays.add('SCAN_OK', 'note', {
+          position: {
+            bottom: 0,
+            right: 0
+          },
+          html: '<div class="diagram-note">Mixed up the labels?</div>'
+        });
+        // add marker
+        canvas.addMarker('SCAN_OK', 'needs-discussion');
+      } catch (err) {
+        console.error('could not import BPMN 2.0 diagram', err);
+      }
+    }
+    // load external diagram file via AJAX and open it
+    $.get(diagramUrl, openDiagram, 'text');
+    // wire save button
+    $('#downloadXML').click(downloadXML);
+    $('#downloadSVG').click(downloadSVG);
+    $('#downloadPNG').click(downloadPNG);
+  </script>
+  <!--
+    Thanks for trying out our BPMN toolkit!
+    This example uses the pre-built distribution of the bpmn-js modeler.
+    Consider rolling your own distribution to have more flexibility
+    regarding which features to include.
+    Checkout our advanced examples section to learn more:
+    * https://github.com/bpmn-io/bpmn-js-examples#advanced
+    To get a bit broader overview over how bpmn-js works,
+    follow our walkthrough:
+    * https://bpmn.io/toolkit/bpmn-js/walkthrough/
+    Related starters:
+    * https://raw.githubusercontent.com/bpmn-io/bpmn-js-examples/starter/viewer.html
+  -->
+</body>
+</html>
